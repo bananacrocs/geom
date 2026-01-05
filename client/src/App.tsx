@@ -1,16 +1,44 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import * as THREE from 'three';
 import { Header } from './components/Header';
 import { FormaWidget, FacceWidget, BordiWidget, AnimationBar, ExportWidget } from './components/Widget';
 import { GeometryViewer } from './components/Canvas3D';
 import { useGeometryStore } from './stores/geometryStore';
 import { exportGif } from './utils/gifExporter';
+import { exportGLB } from './utils/gltfExporter';
 
 function App() {
   const exportConfig = useGeometryStore((state) => state.exportConfig);
   const shape = useGeometryStore((state) => state.shape);
+  const borderConfig = useGeometryStore((state) => state.borderConfig);
   const [gifProgress, setGifProgress] = useState<number | null>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
 
-  const handleExport = useCallback(async (format: 'png' | 'svg' | 'gif') => {
+  const handleSceneReady = useCallback((scene: THREE.Scene) => {
+    sceneRef.current = scene;
+  }, []);
+
+  const handleExport = useCallback(async (format: 'png' | 'svg' | 'gif' | 'glb') => {
+    if (format === 'glb') {
+      if (!sceneRef.current) {
+        alert('Scena non pronta');
+        return;
+      }
+      try {
+        const blob = await exportGLB(sceneRef.current, shape, borderConfig);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `geometry-${Date.now()}.glb`;
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('GLB export error:', error);
+        alert('Errore durante l\'export GLB');
+      }
+      return;
+    }
+
     const canvas = document.querySelector('canvas');
     if (!canvas) {
       alert('Canvas non trovato');
@@ -69,7 +97,7 @@ function App() {
         alert('Errore durante l\'export SVG.');
       }
     }
-  }, [shape, exportConfig]);
+  }, [shape, borderConfig, exportConfig]);
 
   return (
     <div className="flex flex-col h-screen bg-[#121212]">
@@ -78,7 +106,7 @@ function App() {
       <div className="flex-1 relative overflow-hidden">
         {/* Canvas - Full space */}
         <div className="absolute inset-0">
-          <GeometryViewer className="w-full h-full" />
+          <GeometryViewer className="w-full h-full" onSceneReady={handleSceneReady} />
         </div>
 
         {/* Widget Panel - Left (Forma, Facce, Bordi - tutti collapsed) */}

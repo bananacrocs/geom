@@ -5,7 +5,7 @@ import { SliderControl } from './SliderControl';
 import { useGeometryStore } from '../../stores/geometryStore';
 
 interface ExportWidgetProps {
-  onExport: (format: 'png' | 'svg' | 'gif') => Promise<void>;
+  onExport: (format: 'png' | 'svg' | 'gif' | 'glb') => Promise<void>;
 }
 
 export function ExportWidget({ onExport }: ExportWidgetProps) {
@@ -30,8 +30,8 @@ export function ExportWidget({ onExport }: ExportWidgetProps) {
           <label className="text-xs font-medium uppercase tracking-wide text-gray-500 block mb-4">
             Formato
           </label>
-          <div className="grid grid-cols-3 gap-3">
-            {(['png', 'svg', 'gif'] as const).map((fmt) => (
+          <div className="grid grid-cols-4 gap-3">
+            {(['png', 'svg', 'gif', 'glb'] as const).map((fmt) => (
               <button
                 key={fmt}
                 onClick={() => setExportConfig({ format: fmt })}

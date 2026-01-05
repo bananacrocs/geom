@@ -53,7 +53,7 @@ export interface GifExportConfig {
 
 // Configurazione export generale
 export interface ExportConfig {
-  format: 'png' | 'svg' | 'gif';
+  format: 'png' | 'svg' | 'gif' | 'glb';
   width: number;
   height: number;
   backgroundColor: string;

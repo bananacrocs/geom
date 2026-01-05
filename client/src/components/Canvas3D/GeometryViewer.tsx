@@ -1,19 +1,39 @@
-import { Canvas } from '@react-three/fiber';
+import { useEffect, useRef } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
+import * as THREE from 'three';
 import { ParametricShape } from './ParametricShape';
 import { CenterIcon } from './CenterIcon';
 import { useGeometryStore } from '../../stores/geometryStore';
 
 interface GeometryViewerProps {
   className?: string;
+  onSceneReady?: (scene: THREE.Scene) => void;
+}
+
+// Componente per esporre la scena
+function SceneExporter({ onSceneReady }: { onSceneReady?: (scene: THREE.Scene) => void }) {
+  const { scene } = useThree();
+  const callbackRef = useRef(onSceneReady);
+  callbackRef.current = onSceneReady;
+
+  useEffect(() => {
+    if (callbackRef.current) {
+      callbackRef.current(scene);
+    }
+  }, [scene]);
+
+  return null;
 }
 
 // Componente interno per la scena
-function Scene() {
+function Scene({ onSceneReady }: { onSceneReady?: (scene: THREE.Scene) => void }) {
   const shape = useGeometryStore((state) => state.shape);
 
   return (
     <>
+      <SceneExporter onSceneReady={onSceneReady} />
+
       {/* Camera */}
       <PerspectiveCamera makeDefault position={[0, 0, 4]} fov={50} />
 
@@ -39,7 +59,7 @@ function Scene() {
   );
 }
 
-export function GeometryViewer({ className }: GeometryViewerProps) {
+export function GeometryViewer({ className, onSceneReady }: GeometryViewerProps) {
   return (
     <div className={`w-full h-full ${className || ''}`}>
       <Canvas
@@ -51,7 +71,7 @@ export function GeometryViewer({ className }: GeometryViewerProps) {
           background: '#767676',
         }}
       >
-        <Scene />
+        <Scene onSceneReady={onSceneReady} />
       </Canvas>
     </div>
   );
