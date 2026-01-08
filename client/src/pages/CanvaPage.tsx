@@ -1,5 +1,5 @@
 import { useRef, useMemo, useEffect, useState } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import { ArrowLeft, Download, Upload } from 'lucide-react';
 import * as THREE from 'three';
@@ -21,9 +21,10 @@ function SceneRef({ sceneRef }: { sceneRef: React.MutableRefObject<THREE.Scene |
   return null;
 }
 
-// Cubo wireframe (solo bordi)
+// Cubo wireframe (solo bordi) con spin
 function WireframeCube() {
   const { size } = useThree();
+  const cubeRef = useRef<THREE.Group>(null);
 
   const line2 = useMemo(() => {
     // Crea geometria cubo
@@ -46,7 +47,18 @@ function WireframeCube() {
     return new LineSegments2(lineGeom, material);
   }, [size]);
 
-  return <primitive object={line2} />;
+  // Animazione spin
+  useFrame((_, delta) => {
+    if (cubeRef.current) {
+      cubeRef.current.rotation.y += delta * 0.5;
+    }
+  });
+
+  return (
+    <group ref={cubeRef}>
+      <primitive object={line2} />
+    </group>
+  );
 }
 
 // Tick icon caricato da file FBX
@@ -72,9 +84,9 @@ function TickIcon() {
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
 
-      // Scala per entrare nel cubo (0.8 unità max per lasciare margine nel cubo da 1.5)
+      // Scala per entrare nel cubo
       if (maxDim > 0) {
-        const targetSize = 1.0;
+        const targetSize = 1.3;
         const scaleFactor = targetSize / maxDim;
         fbx.scale.set(scaleFactor, scaleFactor, scaleFactor);
       }
