@@ -1,7 +1,11 @@
-import { RotateCcw, Box } from 'lucide-react';
+import { RotateCcw, Box, Palette } from 'lucide-react';
 import { useGeometryStore } from '../../stores/geometryStore';
 
-export function Header() {
+interface HeaderProps {
+  onCanvaClick?: () => void;
+}
+
+export function Header({ onCanvaClick }: HeaderProps) {
   const { resetShape } = useGeometryStore();
 
   return (
@@ -15,13 +19,22 @@ export function Header() {
       </div>
 
       {/* Actions */}
-      <button
-        onClick={() => window.confirm('Reset?') && resetShape()}
-        className="px-3 py-1.5 bg-[#252525] border border-[#333] rounded-lg text-gray-400 hover:text-white hover:bg-[#2a2a2a] transition-all flex items-center gap-2 text-xs"
-      >
-        <RotateCcw size={14} />
-        Reset
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => window.confirm('Reset?') && resetShape()}
+          className="px-3 py-1.5 bg-[#252525] border border-[#333] rounded-lg text-gray-400 hover:text-white hover:bg-[#2a2a2a] transition-all flex items-center gap-2 text-xs"
+        >
+          <RotateCcw size={14} />
+          Reset
+        </button>
+        <button
+          onClick={onCanvaClick}
+          className="px-3 py-1.5 bg-[#252525] border border-[#333] rounded-lg text-gray-400 hover:text-white hover:bg-[#2a2a2a] transition-all flex items-center gap-2 text-xs"
+        >
+          <Palette size={14} />
+          Canva
+        </button>
+      </div>
     </header>
   );
 }

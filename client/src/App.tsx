@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { Header } from './components/Header';
 import { FormaWidget, FacceWidget, BordiWidget, AnimationBar, ExportWidget } from './components/Widget';
 import { GeometryViewer } from './components/Canvas3D';
+import { CanvaPage } from './pages/CanvaPage';
 import { useGeometryStore } from './stores/geometryStore';
 import { exportGif } from './utils/gifExporter';
 import { exportGLB } from './utils/gltfExporter';
@@ -12,6 +13,7 @@ function App() {
   const shape = useGeometryStore((state) => state.shape);
   const borderConfig = useGeometryStore((state) => state.borderConfig);
   const [gifProgress, setGifProgress] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState<'main' | 'canva'>('main');
   const sceneRef = useRef<THREE.Scene | null>(null);
 
   const handleSceneReady = useCallback((scene: THREE.Scene) => {
@@ -99,9 +101,14 @@ function App() {
     }
   }, [shape, borderConfig, exportConfig]);
 
+  // Se siamo nella pagina Canva, mostra quella
+  if (currentPage === 'canva') {
+    return <CanvaPage onBack={() => setCurrentPage('main')} />;
+  }
+
   return (
     <div className="flex flex-col h-screen bg-[#121212]">
-      <Header />
+      <Header onCanvaClick={() => setCurrentPage('canva')} />
 
       <div className="flex-1 relative overflow-hidden">
         {/* Canvas - Full space */}
