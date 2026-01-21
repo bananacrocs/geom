@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { FormaWidget, FacceWidget, BordiWidget, AnimationBar, ExportWidget } from './components/Widget';
 import { GeometryViewer } from './components/Canvas3D';
 import { CanvaPage } from './pages/CanvaPage';
+import { IsometricPage } from './pages/IsometricPage';
 import { useGeometryStore } from './stores/geometryStore';
 import { exportGif } from './utils/gifExporter';
 import { exportGLB } from './utils/gltfExporter';
@@ -13,7 +14,7 @@ function App() {
   const shape = useGeometryStore((state) => state.shape);
   const borderConfig = useGeometryStore((state) => state.borderConfig);
   const [gifProgress, setGifProgress] = useState<number | null>(null);
-  const [currentPage, setCurrentPage] = useState<'main' | 'canva'>('main');
+  const [currentPage, setCurrentPage] = useState<'main' | 'canva' | 'isometric'>('main');
   const sceneRef = useRef<THREE.Scene | null>(null);
 
   const handleSceneReady = useCallback((scene: THREE.Scene) => {
@@ -106,9 +107,14 @@ function App() {
     return <CanvaPage onBack={() => setCurrentPage('main')} />;
   }
 
+  // Se siamo nella pagina Isometric, mostra quella
+  if (currentPage === 'isometric') {
+    return <IsometricPage onBack={() => setCurrentPage('main')} />;
+  }
+
   return (
     <div className="flex flex-col h-screen bg-[#121212]">
-      <Header onCanvaClick={() => setCurrentPage('canva')} />
+      <Header onCanvaClick={() => setCurrentPage('canva')} onIsometricClick={() => setCurrentPage('isometric')} />
 
       <div className="flex-1 relative overflow-hidden">
         {/* Canvas - Full space */}

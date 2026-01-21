@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState } from 'react';
+import { useRef, useMemo, useState, useEffect } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
 import { ArrowLeft, Download, Upload, Pause, Play, Trash2 } from 'lucide-react';
@@ -7,12 +7,34 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
-import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
-import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
-import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 
 interface CanvaPageProps {
   onBack: () => void;
+}
+
+// Helper per creare cilindro tra due punti (per wireframe esportabile)
+function createEdgeCylinder(
+  start: THREE.Vector3,
+  end: THREE.Vector3,
+  radius: number,
+  material: THREE.Material
+): THREE.Mesh {
+  const direction = new THREE.Vector3().subVectors(end, start);
+  const length = direction.length();
+
+  const geometry = new THREE.CylinderGeometry(radius, radius, length, 8);
+  const mesh = new THREE.Mesh(geometry, material);
+
+  // Posiziona al centro tra i due punti
+  mesh.position.copy(start).add(end).multiplyScalar(0.5);
+
+  // Orienta lungo la direzione
+  mesh.quaternion.setFromUnitVectors(
+    new THREE.Vector3(0, 1, 0),
+    direction.clone().normalize()
+  );
+
+  return mesh;
 }
 
 // Componente per esporre la scena
@@ -22,47 +44,126 @@ function SceneRef({ sceneRef }: { sceneRef: React.MutableRefObject<THREE.Scene |
   return null;
 }
 
-// Piramide wireframe (solo bordi) con spin - Standard: forma 1.5 unità, bordi 20px
-function WireframePyramid({ isAnimating }: { isAnimating: boolean }) {
-  const { size } = useThree();
-  const pyramidRef = useRef<THREE.Group>(null);
+// Componente Logo Webwise 3D - carica SVG e lo renderizza in 3D
+function LogoWebwise3D() {
+  const [logoGroup, setLogoGroup] = useState<THREE.Group | null>(null);
 
-  const line2 = useMemo(() => {
-    // Crea geometria piramide (tetraedro con base quadrata)
-    // Usa ConeGeometry con 4 segmenti radiali per creare una piramide a base quadrata
-    const pyramidGeom = new THREE.ConeGeometry(1.41, 2.0, 4); // raggio ~1.41 per avere diagonale ~2.0 (aumentato di 0.5 unità)
-    pyramidGeom.rotateY(Math.PI / 4); // Ruota per allineare i bordi
-    // Sposta la geometria verso il basso per centrare l'icona nel mezzo visivo della piramide
-    pyramidGeom.translate(0, 0.25, 0);
+  useEffect(() => {
+    // Carica il logo-webwise.svg
+    fetch('/icons/logo-webwise.svg')
+      .then((res) => res.text())
+      .then((svgText) => {
+        const loader = new SVGLoader();
+        const svgData = loader.parse(svgText);
 
-    const edges = new THREE.EdgesGeometry(pyramidGeom);
+        const group = new THREE.Group();
+        const targetColor = new THREE.Color(0x2EBAEB);
+
+        svgData.paths.forEach((path) => {
+          const shapes = SVGLoader.createShapes(path);
+          shapes.forEach((shape) => {
+            const geometry = new THREE.ExtrudeGeometry(shape, {
+              depth: 100, // Profondità maggiore per compensare la scala del logo grande
+              bevelEnabled: false,
+            });
+            const material = new THREE.MeshStandardMaterial({
+              color: targetColor,
+              side: THREE.DoubleSide,
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            group.add(mesh);
+          });
+        });
+
+        // Calcola bounding box e scala
+        const box = new THREE.Box3().setFromObject(group);
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+
+        // Scala per stare nel dodecaedro (0.8 unità)
+        if (maxDim > 0) {
+          const targetSize = 0.8;
+          const scaleFactor = targetSize / maxDim;
+          group.scale.set(scaleFactor, -scaleFactor, scaleFactor); // -Y per flip verticale
+        }
+
+        // Aggiorna matrix world e centra
+        group.updateMatrixWorld(true);
+        const newBox = new THREE.Box3().setFromObject(group);
+        const center = newBox.getCenter(new THREE.Vector3());
+        group.position.set(-center.x, -center.y, -center.z);
+
+        setLogoGroup(group);
+      })
+      .catch((err) => {
+        console.error('Errore caricamento logo-webwise.svg:', err);
+      });
+  }, []);
+
+  if (!logoGroup) return null;
+
+  return <primitive object={logoGroup} />;
+}
+
+// Icosaedro wireframe (cilindri mesh per export GLB) con spin - Standard: forma 2.0 unità
+function WireframeIcosahedron({ isAnimating }: { isAnimating: boolean }) {
+  const icosahedronRef = useRef<THREE.Group>(null);
+
+  const edgesGroup = useMemo(() => {
+    // Crea geometria icosaedro (20 facce triangolari)
+    const icosahedronGeom = new THREE.IcosahedronGeometry(1.0); // raggio 1.0 per diametro 2.0 unità
+
+    const edges = new THREE.EdgesGeometry(icosahedronGeom);
     const positions = edges.attributes.position.array as Float32Array;
 
-    // Crea LineSegmentsGeometry per Line2
-    const lineGeom = new LineSegmentsGeometry();
-    lineGeom.setPositions(positions);
-
-    // Materiale con spessore standard 20px, colore bianco
-    const material = new LineMaterial({
+    // Materiale bianco per i cilindri e sfere
+    const material = new THREE.MeshStandardMaterial({
       color: 0xffffff,
-      linewidth: 20,
-      worldUnits: false,
     });
-    material.resolution.set(size.width, size.height);
 
-    return new LineSegments2(lineGeom, material);
-  }, [size]);
+    // Crea gruppo per tutti i cilindri e sfere
+    const group = new THREE.Group();
+    const radius = 0.045; // Raggio cilindri leggermente più sottile
+
+    // Set per raccogliere vertici unici (per le sfere ai giunti)
+    const verticesSet = new Map<string, THREE.Vector3>();
+
+    // Itera sulle coppie di punti (ogni edge ha 2 vertici = 6 float)
+    for (let i = 0; i < positions.length; i += 6) {
+      const start = new THREE.Vector3(positions[i], positions[i + 1], positions[i + 2]);
+      const end = new THREE.Vector3(positions[i + 3], positions[i + 4], positions[i + 5]);
+
+      const cylinder = createEdgeCylinder(start, end, radius, material);
+      group.add(cylinder);
+
+      // Aggiungi vertici al set (usando stringa come chiave per deduplicare)
+      const startKey = `${start.x.toFixed(4)},${start.y.toFixed(4)},${start.z.toFixed(4)}`;
+      const endKey = `${end.x.toFixed(4)},${end.y.toFixed(4)},${end.z.toFixed(4)}`;
+      if (!verticesSet.has(startKey)) verticesSet.set(startKey, start.clone());
+      if (!verticesSet.has(endKey)) verticesSet.set(endKey, end.clone());
+    }
+
+    // Crea sfere ai vertici per giunzioni lisce
+    const sphereGeom = new THREE.SphereGeometry(radius, 16, 16);
+    verticesSet.forEach((vertex) => {
+      const sphere = new THREE.Mesh(sphereGeom, material);
+      sphere.position.copy(vertex);
+      group.add(sphere);
+    });
+
+    return group;
+  }, []);
 
   // Animazione spin (solo se isAnimating è true)
   useFrame((_, delta) => {
-    if (pyramidRef.current && isAnimating) {
-      pyramidRef.current.rotation.y += delta * 0.5;
+    if (icosahedronRef.current && isAnimating) {
+      icosahedronRef.current.rotation.y += delta * 0.5;
     }
   });
 
   return (
-    <group ref={pyramidRef}>
-      <primitive object={line2} />
+    <group ref={icosahedronRef}>
+      <primitive object={edgesGroup} />
     </group>
   );
 }
@@ -78,8 +179,11 @@ function Scene({ sceneRef, isAnimating }: { sceneRef: React.MutableRefObject<THR
       <directionalLight position={[5, 5, 5]} intensity={1} />
       <directionalLight position={[-5, -5, -5]} intensity={0.3} />
 
-      {/* Piramide wireframe bianca */}
-      <WireframePyramid isAnimating={isAnimating} />
+      {/* Icosaedro wireframe bianco */}
+      <WireframeIcosahedron isAnimating={isAnimating} />
+
+      {/* Logo Webwise 3D statico al centro */}
+      <LogoWebwise3D />
     </>
   );
 }

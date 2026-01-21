@@ -1,11 +1,12 @@
-import { RotateCcw, Box, Palette } from 'lucide-react';
+import { RotateCcw, Box, Palette, Boxes } from 'lucide-react';
 import { useGeometryStore } from '../../stores/geometryStore';
 
 interface HeaderProps {
   onCanvaClick?: () => void;
+  onIsometricClick?: () => void;
 }
 
-export function Header({ onCanvaClick }: HeaderProps) {
+export function Header({ onCanvaClick, onIsometricClick }: HeaderProps) {
   const { resetShape } = useGeometryStore();
 
   return (
@@ -33,6 +34,13 @@ export function Header({ onCanvaClick }: HeaderProps) {
         >
           <Palette size={14} />
           Canva
+        </button>
+        <button
+          onClick={onIsometricClick}
+          className="px-3 py-1.5 bg-[#252525] border border-[#333] rounded-lg text-gray-400 hover:text-white hover:bg-[#2a2a2a] transition-all flex items-center gap-2 text-xs"
+        >
+          <Boxes size={14} />
+          Isometric
         </button>
       </div>
     </header>
