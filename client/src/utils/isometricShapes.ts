@@ -1,9 +1,11 @@
 /**
  * Forme e componenti tech per post Instagram
  * Stile minimalista Attio-like
+ * Updated: force HMR reload
  */
 
 import type { ShapeConfig } from '../stores/isometricStore';
+import { LUCIDE_TECH_ICONS, LUCIDE_MEDIA_ICONS, LUCIDE_COMM_ICONS, LUCIDE_LOCATION_ICONS, LUCIDE_TIME_ICONS, LUCIDE_NOTIFICATION_ICONS, LUCIDE_SOCIAL_ICONS, LUCIDE_EFFECT_ICONS, LUCIDE_WEATHER_ICONS } from './lucideIcons';
 
 // Colori consistenti
 const C = {
@@ -1528,46 +1530,120 @@ export function generateAllShapes(): ShapeConfig[] {
     { id: 'chevron', name: 'Chevron', category: 'geometric', svg: createChevron(), width: 70, height: 70 },
     { id: 'double-chevron', name: 'Chevrons', category: 'geometric', svg: createDoubleChevron(), width: 80, height: 70 },
 
-    // Tech
-    { id: 'chip', name: 'Chip', category: 'tech', svg: createChip(), width: 100, height: 100 },
-    { id: 'gpu', name: 'GPU', category: 'tech', svg: createGPU(), width: 130, height: 100 },
-    { id: 'server-rack', name: 'Server', category: 'tech', svg: createServerRack(), width: 90, height: 110 },
-    { id: 'cloud', name: 'Cloud', category: 'tech', svg: createCloud(), width: 100, height: 70 },
-    { id: 'cloud-dashed', name: 'Cloud Dash', category: 'tech', svg: createCloudDashed(), width: 100, height: 70 },
-    { id: 'cloud-upload', name: 'Upload', category: 'tech', svg: createCloudUpload(), width: 100, height: 80 },
-    { id: 'cloud-download', name: 'Download', category: 'tech', svg: createCloudDownload(), width: 100, height: 80 },
-    { id: 'database', name: 'Database', category: 'tech', svg: createDatabase(), width: 80, height: 90 },
-    { id: 'api-endpoint', name: 'API', category: 'tech', svg: createApiEndpoint(), width: 100, height: 50 },
-    { id: 'api-get', name: 'GET', category: 'tech', svg: createApiGet(), width: 100, height: 50 },
-    { id: 'api-post', name: 'POST', category: 'tech', svg: createApiPost(), width: 100, height: 50 },
-    { id: 'code-brackets', name: 'Code', category: 'tech', svg: createCodeBrackets(), width: 90, height: 70 },
-    { id: 'curly-braces', name: 'Braces', category: 'tech', svg: createCurlyBraces(), width: 80, height: 80 },
-    { id: 'terminal', name: 'Terminal', category: 'tech', svg: createTerminal(), width: 100, height: 80 },
-    { id: 'browser', name: 'Browser', category: 'tech', svg: createBrowser(), width: 110, height: 80 },
-    { id: 'mobile', name: 'Mobile', category: 'tech', svg: createMobile(), width: 70, height: 120 },
-    { id: 'laptop', name: 'Laptop', category: 'tech', svg: createLaptop(), width: 130, height: 95 },
-    { id: 'network-node', name: 'Network', category: 'tech', svg: createNetworkNode(), width: 100, height: 100 },
-    { id: 'network-mesh', name: 'Mesh', category: 'tech', svg: createNetworkMesh(), width: 120, height: 100 },
-    { id: 'wifi', name: 'WiFi', category: 'tech', svg: createWifi(), width: 100, height: 90 },
-    { id: 'bluetooth', name: 'Bluetooth', category: 'tech', svg: createBluetooth(), width: 90, height: 90 },
-    { id: 'usb', name: 'USB', category: 'tech', svg: createUSB(), width: 70, height: 100 },
-    { id: 'lightning', name: 'Lightning', category: 'tech', svg: createLightning(), width: 80, height: 100 },
-    { id: 'battery', name: 'Battery', category: 'tech', svg: createBattery(), width: 100, height: 55 },
-    { id: 'lock', name: 'Lock', category: 'tech', svg: createLock(), width: 75, height: 100 },
-    { id: 'unlock', name: 'Unlock', category: 'tech', svg: createUnlock(), width: 80, height: 100 },
-    { id: 'shield', name: 'Shield', category: 'tech', svg: createShield(), width: 85, height: 100 },
-    { id: 'key', name: 'Key', category: 'tech', svg: createKey(), width: 110, height: 65 },
-    { id: 'gear', name: 'Gear', category: 'tech', svg: createGear(), width: 80, height: 80 },
-    { id: 'double-gear', name: 'Gears', category: 'tech', svg: createDoubleGear(), width: 100, height: 80 },
-    { id: 'cube-3d', name: 'Cube 3D', category: 'tech', svg: createCube3D(), width: 80, height: 90 },
-    { id: 'folder', name: 'Folder', category: 'tech', svg: createFolder(), width: 90, height: 70 },
-    { id: 'file-doc', name: 'Doc', category: 'tech', svg: createFileDoc(), width: 70, height: 90 },
-    { id: 'file-code', name: 'Code File', category: 'tech', svg: createFileCode(), width: 70, height: 90 },
-    { id: 'git-branch', name: 'Branch', category: 'tech', svg: createGitBranch(), width: 80, height: 80 },
-    { id: 'git-merge', name: 'Merge', category: 'tech', svg: createGitMerge(), width: 80, height: 80 },
-    { id: 'qr-code', name: 'QR', category: 'tech', svg: createQRCode(), width: 80, height: 80 },
-    { id: 'hashtag', name: 'Hashtag', category: 'tech', svg: createHashtag(), width: 70, height: 70 },
-    { id: 'at-symbol', name: '@', category: 'tech', svg: createAtSymbol(), width: 80, height: 80 },
+    // Tech - Lucide Icons (professional quality)
+    { id: 'cpu', name: 'CPU', category: 'tech', ...LUCIDE_TECH_ICONS['cpu'] },
+    { id: 'server', name: 'Server', category: 'tech', ...LUCIDE_TECH_ICONS['server'] },
+    { id: 'hard-drive', name: 'Hard Drive', category: 'tech', ...LUCIDE_TECH_ICONS['hard-drive'] },
+    { id: 'router', name: 'Router', category: 'tech', ...LUCIDE_TECH_ICONS['router'] },
+    { id: 'cloud', name: 'Cloud', category: 'tech', ...LUCIDE_TECH_ICONS['cloud'] },
+    { id: 'cloud-upload', name: 'Upload', category: 'tech', ...LUCIDE_TECH_ICONS['cloud-upload'] },
+    { id: 'cloud-download', name: 'Download', category: 'tech', ...LUCIDE_TECH_ICONS['cloud-download'] },
+    { id: 'database', name: 'Database', category: 'tech', ...LUCIDE_TECH_ICONS['database'] },
+    { id: 'wifi', name: 'WiFi', category: 'tech', ...LUCIDE_TECH_ICONS['wifi'] },
+    { id: 'bluetooth', name: 'Bluetooth', category: 'tech', ...LUCIDE_TECH_ICONS['bluetooth'] },
+    { id: 'usb', name: 'USB', category: 'tech', ...LUCIDE_TECH_ICONS['usb'] },
+    { id: 'network', name: 'Network', category: 'tech', ...LUCIDE_TECH_ICONS['network'] },
+    { id: 'globe', name: 'Globe', category: 'tech', ...LUCIDE_TECH_ICONS['globe'] },
+    { id: 'link', name: 'Link', category: 'tech', ...LUCIDE_TECH_ICONS['link'] },
+    { id: 'webhook', name: 'Webhook', category: 'tech', ...LUCIDE_TECH_ICONS['webhook'] },
+    { id: 'laptop', name: 'Laptop', category: 'tech', ...LUCIDE_TECH_ICONS['laptop'] },
+    { id: 'smartphone', name: 'Mobile', category: 'tech', ...LUCIDE_TECH_ICONS['smartphone'] },
+    { id: 'monitor', name: 'Monitor', category: 'tech', ...LUCIDE_TECH_ICONS['monitor'] },
+    { id: 'terminal', name: 'Terminal', category: 'tech', ...LUCIDE_TECH_ICONS['terminal'] },
+    { id: 'code', name: 'Code', category: 'tech', ...LUCIDE_TECH_ICONS['code'] },
+    { id: 'braces', name: 'Braces', category: 'tech', ...LUCIDE_TECH_ICONS['braces'] },
+    { id: 'git-branch', name: 'Branch', category: 'tech', ...LUCIDE_TECH_ICONS['git-branch'] },
+    { id: 'git-merge', name: 'Merge', category: 'tech', ...LUCIDE_TECH_ICONS['git-merge'] },
+    { id: 'lock', name: 'Lock', category: 'tech', ...LUCIDE_TECH_ICONS['lock'] },
+    { id: 'unlock', name: 'Unlock', category: 'tech', ...LUCIDE_TECH_ICONS['unlock'] },
+    { id: 'shield', name: 'Shield', category: 'tech', ...LUCIDE_TECH_ICONS['shield'] },
+    { id: 'key', name: 'Key', category: 'tech', ...LUCIDE_TECH_ICONS['key'] },
+    { id: 'settings', name: 'Settings', category: 'tech', ...LUCIDE_TECH_ICONS['settings'] },
+    { id: 'folder', name: 'Folder', category: 'tech', ...LUCIDE_TECH_ICONS['folder'] },
+    { id: 'file-text', name: 'Doc', category: 'tech', ...LUCIDE_TECH_ICONS['file-text'] },
+    { id: 'file-code', name: 'Code File', category: 'tech', ...LUCIDE_TECH_ICONS['file-code'] },
+    { id: 'qr-code', name: 'QR', category: 'tech', ...LUCIDE_TECH_ICONS['qr-code'] },
+    { id: 'hash', name: 'Hash', category: 'tech', ...LUCIDE_TECH_ICONS['hash'] },
+    { id: 'at-sign', name: '@', category: 'tech', ...LUCIDE_TECH_ICONS['at-sign'] },
+    { id: 'zap', name: 'Zap', category: 'tech', ...LUCIDE_TECH_ICONS['zap'] },
+    { id: 'battery', name: 'Battery', category: 'tech', ...LUCIDE_TECH_ICONS['battery'] },
+    { id: 'box', name: 'Box', category: 'tech', ...LUCIDE_TECH_ICONS['box'] },
+    { id: 'layers', name: 'Layers', category: 'tech', ...LUCIDE_TECH_ICONS['layers'] },
+    { id: 'package', name: 'Package', category: 'tech', ...LUCIDE_TECH_ICONS['package'] },
+    { id: 'archive', name: 'Archive', category: 'tech', ...LUCIDE_TECH_ICONS['archive'] },
+    { id: 'inbox', name: 'Inbox', category: 'tech', ...LUCIDE_TECH_ICONS['inbox'] },
+    { id: 'send', name: 'Send', category: 'tech', ...LUCIDE_TECH_ICONS['send'] },
+    { id: 'download', name: 'Download', category: 'tech', ...LUCIDE_TECH_ICONS['download'] },
+    { id: 'upload', name: 'Upload', category: 'tech', ...LUCIDE_TECH_ICONS['upload'] },
+    { id: 'refresh', name: 'Refresh', category: 'tech', ...LUCIDE_TECH_ICONS['refresh'] },
+    { id: 'rotate', name: 'Rotate', category: 'tech', ...LUCIDE_TECH_ICONS['rotate'] },
+    { id: 'play', name: 'Play', category: 'tech', ...LUCIDE_TECH_ICONS['play'] },
+    { id: 'pause', name: 'Pause', category: 'tech', ...LUCIDE_TECH_ICONS['pause'] },
+    { id: 'stop', name: 'Stop', category: 'tech', ...LUCIDE_TECH_ICONS['stop'] },
+    { id: 'eye', name: 'Eye', category: 'tech', ...LUCIDE_TECH_ICONS['eye'] },
+    { id: 'eye-off', name: 'Eye Off', category: 'tech', ...LUCIDE_TECH_ICONS['eye-off'] },
+    { id: 'search', name: 'Search', category: 'tech', ...LUCIDE_TECH_ICONS['search'] },
+    { id: 'filter', name: 'Filter', category: 'tech', ...LUCIDE_TECH_ICONS['filter'] },
+    { id: 'sliders', name: 'Sliders', category: 'tech', ...LUCIDE_TECH_ICONS['sliders'] },
+
+    // Media Icons
+    { id: 'mic', name: 'Mic', category: 'tech', ...LUCIDE_MEDIA_ICONS['mic'] },
+    { id: 'camera', name: 'Camera', category: 'tech', ...LUCIDE_MEDIA_ICONS['camera'] },
+    { id: 'image', name: 'Image', category: 'tech', ...LUCIDE_MEDIA_ICONS['image'] },
+    { id: 'video', name: 'Video', category: 'tech', ...LUCIDE_MEDIA_ICONS['video'] },
+    { id: 'music', name: 'Music', category: 'tech', ...LUCIDE_MEDIA_ICONS['music'] },
+    { id: 'headphones', name: 'Headphones', category: 'tech', ...LUCIDE_MEDIA_ICONS['headphones'] },
+    { id: 'speaker', name: 'Speaker', category: 'tech', ...LUCIDE_MEDIA_ICONS['speaker'] },
+    { id: 'volume', name: 'Volume', category: 'tech', ...LUCIDE_MEDIA_ICONS['volume'] },
+    { id: 'radio', name: 'Radio', category: 'tech', ...LUCIDE_MEDIA_ICONS['radio'] },
+    { id: 'podcast', name: 'Podcast', category: 'tech', ...LUCIDE_MEDIA_ICONS['podcast'] },
+    { id: 'rss', name: 'RSS', category: 'tech', ...LUCIDE_MEDIA_ICONS['rss'] },
+    { id: 'share', name: 'Share', category: 'tech', ...LUCIDE_MEDIA_ICONS['share'] },
+
+    // Communication
+    { id: 'message', name: 'Message', category: 'tech', ...LUCIDE_COMM_ICONS['message'] },
+    { id: 'mail', name: 'Mail', category: 'tech', ...LUCIDE_COMM_ICONS['mail'] },
+    { id: 'phone', name: 'Phone', category: 'tech', ...LUCIDE_COMM_ICONS['phone'] },
+
+    // Location
+    { id: 'map-pin', name: 'Map Pin', category: 'tech', ...LUCIDE_LOCATION_ICONS['map-pin'] },
+    { id: 'navigation', name: 'Navigation', category: 'tech', ...LUCIDE_LOCATION_ICONS['navigation'] },
+    { id: 'compass', name: 'Compass', category: 'tech', ...LUCIDE_LOCATION_ICONS['compass'] },
+
+    // Time
+    { id: 'clock', name: 'Clock', category: 'tech', ...LUCIDE_TIME_ICONS['clock'] },
+    { id: 'calendar', name: 'Calendar', category: 'tech', ...LUCIDE_TIME_ICONS['calendar'] },
+    { id: 'timer', name: 'Timer', category: 'tech', ...LUCIDE_TIME_ICONS['timer'] },
+    { id: 'alarm', name: 'Alarm', category: 'tech', ...LUCIDE_TIME_ICONS['alarm'] },
+
+    // Notifications
+    { id: 'bell', name: 'Bell', category: 'tech', ...LUCIDE_NOTIFICATION_ICONS['bell'] },
+    { id: 'bell-ring', name: 'Bell Ring', category: 'tech', ...LUCIDE_NOTIFICATION_ICONS['bell-ring'] },
+    { id: 'bookmark', name: 'Bookmark', category: 'tech', ...LUCIDE_NOTIFICATION_ICONS['bookmark'] },
+
+    // Social
+    { id: 'heart', name: 'Heart', category: 'tech', ...LUCIDE_SOCIAL_ICONS['heart'] },
+    { id: 'star', name: 'Star', category: 'tech', ...LUCIDE_SOCIAL_ICONS['star'] },
+    { id: 'thumbs-up', name: 'Like', category: 'tech', ...LUCIDE_SOCIAL_ICONS['thumbs-up'] },
+    { id: 'award', name: 'Award', category: 'tech', ...LUCIDE_SOCIAL_ICONS['award'] },
+    { id: 'trophy', name: 'Trophy', category: 'tech', ...LUCIDE_SOCIAL_ICONS['trophy'] },
+    { id: 'medal', name: 'Medal', category: 'tech', ...LUCIDE_SOCIAL_ICONS['medal'] },
+    { id: 'target', name: 'Target', category: 'tech', ...LUCIDE_SOCIAL_ICONS['target'] },
+    { id: 'crosshair', name: 'Crosshair', category: 'tech', ...LUCIDE_SOCIAL_ICONS['crosshair'] },
+
+    // Effects
+    { id: 'sparkles', name: 'Sparkles', category: 'tech', ...LUCIDE_EFFECT_ICONS['sparkles'] },
+    { id: 'lightbulb', name: 'Lightbulb', category: 'tech', ...LUCIDE_EFFECT_ICONS['lightbulb'] },
+    { id: 'flame', name: 'Flame', category: 'tech', ...LUCIDE_EFFECT_ICONS['flame'] },
+    { id: 'droplet', name: 'Droplet', category: 'tech', ...LUCIDE_EFFECT_ICONS['droplet'] },
+
+    // Weather
+    { id: 'sun', name: 'Sun', category: 'tech', ...LUCIDE_WEATHER_ICONS['sun'] },
+    { id: 'moon', name: 'Moon', category: 'tech', ...LUCIDE_WEATHER_ICONS['moon'] },
+    { id: 'cloud-sun', name: 'Cloudy', category: 'tech', ...LUCIDE_WEATHER_ICONS['cloud-sun'] },
+    { id: 'thermometer', name: 'Temp', category: 'tech', ...LUCIDE_WEATHER_ICONS['thermometer'] },
+    { id: 'wind', name: 'Wind', category: 'tech', ...LUCIDE_WEATHER_ICONS['wind'] },
+    { id: 'umbrella', name: 'Umbrella', category: 'tech', ...LUCIDE_WEATHER_ICONS['umbrella'] },
 
     // UI
     { id: 'toggle-on', name: 'Toggle On', category: 'ui', svg: createToggleOn(), width: 70, height: 40 },
