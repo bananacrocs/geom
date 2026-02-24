@@ -1,12 +1,13 @@
 import { useRef, useMemo, useState, useEffect } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
-import { ArrowLeft, Download, Upload, Pause, Play, Trash2 } from 'lucide-react';
+import { OrbitControls, PerspectiveCamera, Environment } from '@react-three/drei';
+import { ArrowLeft, Download, Upload, Pause, Play, Trash2, FileImage } from 'lucide-react';
 import * as THREE from 'three';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
+import { SVGRenderer } from 'three/examples/jsm/renderers/SVGRenderer.js';
 
 interface CanvaPageProps {
   onBack: () => void;
@@ -37,16 +38,19 @@ function createEdgeCylinder(
   return mesh;
 }
 
-// Componente per esporre la scena
-function SceneRef({ sceneRef }: { sceneRef: React.MutableRefObject<THREE.Scene | null> }) {
-  const { scene } = useThree();
+// Componente per esporre scena e camera
+function SceneRef({ sceneRef, cameraRef }: { sceneRef: React.MutableRefObject<THREE.Scene | null>, cameraRef: React.MutableRefObject<THREE.Camera | null> }) {
+  const { scene, camera } = useThree();
   sceneRef.current = scene;
+  cameraRef.current = camera;
   return null;
 }
 
 // Componente Logo Webwise 3D - carica SVG e lo renderizza in 3D
-function LogoWebwise3D() {
+function LogoWebwise3D({ isAnimating }: { isAnimating: boolean }) {
   const [logoGroup, setLogoGroup] = useState<THREE.Group | null>(null);
+  const pivotRef = useRef<THREE.Group>(null);
+
 
   useEffect(() => {
     // Carica il logo-webwise.svg
@@ -57,18 +61,24 @@ function LogoWebwise3D() {
         const svgData = loader.parse(svgText);
 
         const group = new THREE.Group();
-        const targetColor = new THREE.Color(0x2EBAEB);
+        const targetColor = new THREE.Color(0xffffff);
 
         svgData.paths.forEach((path) => {
           const shapes = SVGLoader.createShapes(path);
           shapes.forEach((shape) => {
             const geometry = new THREE.ExtrudeGeometry(shape, {
-              depth: 100, // Profondità maggiore per compensare la scala del logo grande
+              depth: 100,
               bevelEnabled: false,
             });
-            const material = new THREE.MeshStandardMaterial({
+            const material = new THREE.MeshPhysicalMaterial({
               color: targetColor,
               side: THREE.DoubleSide,
+              metalness: 0.3,
+              roughness: 0.15,
+              clearcoat: 1.0,
+              clearcoatRoughness: 0.05,
+              reflectivity: 1.0,
+              envMapIntensity: 1.5,
             });
             const mesh = new THREE.Mesh(geometry, material);
             group.add(mesh);
@@ -102,7 +112,11 @@ function LogoWebwise3D() {
 
   if (!logoGroup) return null;
 
-  return <primitive object={logoGroup} />;
+  return (
+    <group ref={pivotRef}>
+      <primitive object={logoGroup} />
+    </group>
+  );
 }
 
 // Icosaedro wireframe (cilindri mesh per export GLB) con spin - Standard: forma 2.0 unità
@@ -168,28 +182,84 @@ function WireframeIcosahedron({ isAnimating }: { isAnimating: boolean }) {
   );
 }
 
+// Cubo con cavità cubica aperta dall'alto
+function HollowCube() {
+  const meshGroup = useMemo(() => {
+    const group = new THREE.Group();
+
+    const s = 1.0;    // metà lato esterno
+    const h = 0.65;   // metà lato cavità interna
+    const depth = 2.0; // altezza totale (= lato cubo)
+
+    const material = new THREE.MeshPhysicalMaterial({
+      color: 0x888888,
+      metalness: 0.15,
+      roughness: 0.35,
+      clearcoat: 0.8,
+      clearcoatRoughness: 0.1,
+      envMapIntensity: 1.0,
+    });
+
+    // Shape: quadrato esterno con buco quadrato interno
+    const shape = new THREE.Shape();
+    shape.moveTo(-s, -s);
+    shape.lineTo(s, -s);
+    shape.lineTo(s, s);
+    shape.lineTo(-s, s);
+    shape.closePath();
+
+    const holePath = new THREE.Path();
+    holePath.moveTo(-h, -h);
+    holePath.lineTo(h, -h);
+    holePath.lineTo(h, h);
+    holePath.lineTo(-h, h);
+    holePath.closePath();
+    shape.holes.push(holePath);
+
+    // Estrudi: crea pareti + bordo superiore (ring) + bordo inferiore (ring)
+    const wallsGeom = new THREE.ExtrudeGeometry(shape, {
+      depth: depth,
+      bevelEnabled: false,
+    });
+    const walls = new THREE.Mesh(wallsGeom, material);
+    walls.rotation.x = -Math.PI / 2;
+    walls.position.y = -depth / 2;
+    group.add(walls);
+
+    // Fondo solido per chiudere la base
+    const bottomGeom = new THREE.PlaneGeometry(h * 2, h * 2);
+    const bottom = new THREE.Mesh(bottomGeom, material);
+    bottom.rotation.x = -Math.PI / 2;
+    bottom.position.y = -depth / 2;
+    group.add(bottom);
+
+    return group;
+  }, []);
+
+  return <primitive object={meshGroup} />;
+}
+
 // Scena 3D
-function Scene({ sceneRef, isAnimating }: { sceneRef: React.MutableRefObject<THREE.Scene | null>, isAnimating: boolean }) {
+function Scene({ sceneRef, cameraRef, isAnimating }: { sceneRef: React.MutableRefObject<THREE.Scene | null>, cameraRef: React.MutableRefObject<THREE.Camera | null>, isAnimating: boolean }) {
   return (
     <>
-      <SceneRef sceneRef={sceneRef} />
-      <PerspectiveCamera makeDefault position={[0, 0, 5]} fov={50} />
-      <OrbitControls enablePan={true} enableZoom={true} />
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[5, 5, 5]} intensity={1} />
-      <directionalLight position={[-5, -5, -5]} intensity={0.3} />
+      <SceneRef sceneRef={sceneRef} cameraRef={cameraRef} />
+      <PerspectiveCamera makeDefault position={[3, 3, 3]} fov={45} />
+      <OrbitControls enablePan={true} enableZoom={true} target={[0, 0, 0]} />
+      <ambientLight intensity={0.4} />
+      <directionalLight position={[5, 5, 5]} intensity={1.2} />
+      <directionalLight position={[-3, 2, -3]} intensity={0.5} />
+      <directionalLight position={[0, -3, 5]} intensity={0.3} />
+      <Environment preset="studio" />
 
-      {/* Icosaedro wireframe bianco */}
-      <WireframeIcosahedron isAnimating={isAnimating} />
-
-      {/* Logo Webwise 3D statico al centro */}
-      <LogoWebwise3D />
+      <HollowCube />
     </>
   );
 }
 
 export function CanvaPage({ onBack }: CanvaPageProps) {
   const sceneRef = useRef<THREE.Scene | null>(null);
+  const cameraRef = useRef<THREE.Camera | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAnimating, setIsAnimating] = useState(true);
 
@@ -375,11 +445,217 @@ export function CanvaPage({ onBack }: CanvaPageProps) {
       alert('Canvas non trovato');
       return;
     }
-    const dataUrl = canvas.toDataURL('image/png');
+
+    // Crea un canvas quadrato croppando dal centro
+    const size = Math.min(canvas.width, canvas.height);
+    const squareCanvas = document.createElement('canvas');
+    squareCanvas.width = size;
+    squareCanvas.height = size;
+    const ctx = squareCanvas.getContext('2d');
+    if (!ctx) return;
+
+    // Croppa dal centro del canvas originale
+    const sx = (canvas.width - size) / 2;
+    const sy = (canvas.height - size) / 2;
+    ctx.drawImage(canvas, sx, sy, size, size, 0, 0, size, size);
+
+    const dataUrl = squareCanvas.toDataURL('image/png');
     const link = document.createElement('a');
     link.download = `canva-${Date.now()}.png`;
     link.href = dataUrl;
     link.click();
+  };
+
+  const handleExportSVG = () => {
+    if (!cameraRef.current) {
+      alert('Scena non pronta');
+      return;
+    }
+
+    const camera = cameraRef.current;
+    const size = 800;
+    const half = size / 2;
+
+    // Dimensioni hollow cube
+    const s = 1.0;
+    const h = 0.65;
+
+    type Vert = [number,number,number];
+    type Face = { verts: Vert[]; normal: Vert; layer: number };
+
+    // Layer: 0 = fondo cavità (più profondo), 1 = pareti interne, 2 = pareti esterne, 3 = ring superiore
+    const faces: Face[] = [
+      // Fondo cavità interna (layer 0)
+      { verts: [[-h,-s,-h],[h,-s,-h],[h,-s,h],[-h,-s,h]], normal: [0,1,0], layer: 0 },
+
+      // Pareti interne (layer 1)
+      { verts: [[h,-s,h],[-h,-s,h],[-h,s,h],[h,s,h]], normal: [0,0,-1], layer: 1 },
+      { verts: [[-h,-s,-h],[h,-s,-h],[h,s,-h],[-h,s,-h]], normal: [0,0,1], layer: 1 },
+      { verts: [[-h,-s,h],[-h,-s,-h],[-h,s,-h],[-h,s,h]], normal: [1,0,0], layer: 1 },
+      { verts: [[h,-s,-h],[h,-s,h],[h,s,h],[h,s,-h]], normal: [-1,0,0], layer: 1 },
+
+      // Pareti esterne (layer 2)
+      { verts: [[-s,-s,s],[s,-s,s],[s,s,s],[-s,s,s]], normal: [0,0,1], layer: 2 },
+      { verts: [[s,-s,-s],[-s,-s,-s],[-s,s,-s],[s,s,-s]], normal: [0,0,-1], layer: 2 },
+      { verts: [[-s,-s,-s],[-s,-s,s],[-s,s,s],[-s,s,-s]], normal: [-1,0,0], layer: 2 },
+      { verts: [[s,-s,s],[s,-s,-s],[s,s,-s],[s,s,s]], normal: [1,0,0], layer: 2 },
+
+      // Fondo esterno
+      { verts: [[-s,-s,s],[s,-s,s],[s,-s,-s],[-s,-s,-s]], normal: [0,-1,0], layer: 2 },
+
+      // Bordo superiore ring (layer 3 - sempre in cima)
+      { verts: [[-s,s,s],[s,s,s],[h,s,h],[-h,s,h]], normal: [0,1,0], layer: 3 },
+      { verts: [[s,s,-s],[-s,s,-s],[-h,s,-h],[h,s,-h]], normal: [0,1,0], layer: 3 },
+      { verts: [[-s,s,-s],[-s,s,s],[-h,s,h],[-h,s,-h]], normal: [0,1,0], layer: 3 },
+      { verts: [[s,s,s],[s,s,-s],[h,s,-h],[h,s,h]], normal: [0,1,0], layer: 3 },
+    ];
+
+    // Imposta aspect 1:1
+    camera.updateMatrixWorld();
+    let originalAspect: number | undefined;
+    if (camera instanceof THREE.PerspectiveCamera) {
+      originalAspect = camera.aspect;
+      camera.aspect = 1;
+      camera.updateProjectionMatrix();
+    }
+
+    const vpMatrix = new THREE.Matrix4().multiplyMatrices(
+      camera.projectionMatrix, camera.matrixWorldInverse
+    );
+
+    if (camera instanceof THREE.PerspectiveCamera && originalAspect !== undefined) {
+      camera.aspect = originalAspect;
+      camera.updateProjectionMatrix();
+    }
+
+    const camDir = new THREE.Vector3();
+    camera.getWorldDirection(camDir);
+    const lightDir = new THREE.Vector3(5, 5, 5).normalize();
+
+    const project = (v: Vert) => {
+      const p = new THREE.Vector3(v[0], v[1], v[2]).applyMatrix4(vpMatrix);
+      return { x: (p.x * half) + half, y: (-p.y * half) + half, z: p.z };
+    };
+
+    // Proietta un singolo punto (per edges)
+    const proj = (v: Vert) => {
+      const p = project(v);
+      return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+    };
+
+    // Processa facce visibili ordinate per layer
+    const visible: { points: string; layer: number; depth: number; color: string }[] = [];
+
+    for (const face of faces) {
+      const n = new THREE.Vector3(face.normal[0], face.normal[1], face.normal[2]);
+      if (n.dot(camDir) > 0.01) continue;
+
+      const projected = face.verts.map(project);
+      const depth = projected.reduce((sum, p) => sum + p.z, 0) / projected.length;
+
+      // Illuminazione con più contrasto per layer interni
+      const lightDot = Math.max(0, n.dot(lightDir));
+      const ambient = face.layer <= 1 ? 0.2 : 0.35; // cavità più scura
+      const baseGray = face.layer === 0 ? 100 : 136; // fondo cavità ancora più scuro
+      const intensity = ambient + (1 - ambient) * lightDot;
+      const colorVal = Math.min(255, Math.round(baseGray * intensity));
+      const hex = colorVal.toString(16).padStart(2, '0');
+      const color = `#${hex}${hex}${hex}`;
+
+      const points = projected.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+      visible.push({ points, layer: face.layer, depth, color });
+    }
+
+    // Ordina: prima per layer (basso=dietro), poi per depth dentro lo stesso layer
+    visible.sort((a, b) => {
+      if (a.layer !== b.layer) return a.layer - b.layer;
+      return b.depth - a.depth;
+    });
+
+    // Edges con layer assignment per disegnare interleaved con le facce
+    const edgeColor = '#555555';
+    const edgeWidth = 2;
+
+    // Vertici chiave
+    const OTF: Vert = [-s,s,s], OTR: Vert = [s,s,s], OTB: Vert = [s,s,-s], OTL: Vert = [-s,s,-s];
+    const OBF: Vert = [-s,-s,s], OBR: Vert = [s,-s,s], OBB: Vert = [s,-s,-s], OBL: Vert = [-s,-s,-s];
+    const ITF: Vert = [-h,s,h], ITR: Vert = [h,s,h], ITB: Vert = [h,s,-h], ITL: Vert = [-h,s,-h];
+    const IBF: Vert = [-h,-s,h], IBR: Vert = [h,-s,h], IBB: Vert = [h,-s,-h], IBL: Vert = [-h,-s,-h];
+
+    // Edges con layer: stessa layering delle facce
+    // layer 0 = fondo cavità, 1 = pareti interne, 2 = pareti esterne, 3 = ring superiore
+    const allEdges: { from: Vert; to: Vert; normal1: Vert; normal2: Vert; layer: number }[] = [
+      // Spigoli fondo cavità (layer 0)
+      { from: IBF, to: IBR, normal1: [0,0,-1], normal2: [0,1,0], layer: 0 },
+      { from: IBR, to: IBB, normal1: [-1,0,0], normal2: [0,1,0], layer: 0 },
+      { from: IBB, to: IBL, normal1: [0,0,1], normal2: [0,1,0], layer: 0 },
+      { from: IBL, to: IBF, normal1: [1,0,0], normal2: [0,1,0], layer: 0 },
+      // Spigoli verticali interni (layer 1)
+      { from: ITF, to: IBF, normal1: [0,0,-1], normal2: [1,0,0], layer: 1 },
+      { from: ITR, to: IBR, normal1: [0,0,-1], normal2: [-1,0,0], layer: 1 },
+      { from: ITB, to: IBB, normal1: [0,0,1], normal2: [-1,0,0], layer: 1 },
+      { from: ITL, to: IBL, normal1: [0,0,1], normal2: [1,0,0], layer: 1 },
+      // Spigoli verticali esterni (layer 2)
+      { from: OTF, to: OBF, normal1: [0,0,1], normal2: [-1,0,0], layer: 2 },
+      { from: OTR, to: OBR, normal1: [0,0,1], normal2: [1,0,0], layer: 2 },
+      { from: OTB, to: OBB, normal1: [0,0,-1], normal2: [1,0,0], layer: 2 },
+      { from: OTL, to: OBL, normal1: [0,0,-1], normal2: [-1,0,0], layer: 2 },
+      // Spigoli inferiori esterni (layer 2)
+      { from: OBF, to: OBR, normal1: [0,0,1], normal2: [0,-1,0], layer: 2 },
+      { from: OBR, to: OBB, normal1: [1,0,0], normal2: [0,-1,0], layer: 2 },
+      { from: OBB, to: OBL, normal1: [0,0,-1], normal2: [0,-1,0], layer: 2 },
+      { from: OBL, to: OBF, normal1: [-1,0,0], normal2: [0,-1,0], layer: 2 },
+      // Spigoli superiori esterni (layer 3)
+      { from: OTF, to: OTR, normal1: [0,0,1], normal2: [0,1,0], layer: 3 },
+      { from: OTR, to: OTB, normal1: [1,0,0], normal2: [0,1,0], layer: 3 },
+      { from: OTB, to: OTL, normal1: [0,0,-1], normal2: [0,1,0], layer: 3 },
+      { from: OTL, to: OTF, normal1: [-1,0,0], normal2: [0,1,0], layer: 3 },
+      // Spigoli superiori buco interno (layer 3)
+      { from: ITF, to: ITR, normal1: [0,0,-1], normal2: [0,1,0], layer: 3 },
+      { from: ITR, to: ITB, normal1: [-1,0,0], normal2: [0,1,0], layer: 3 },
+      { from: ITB, to: ITL, normal1: [0,0,1], normal2: [0,1,0], layer: 3 },
+      { from: ITL, to: ITF, normal1: [1,0,0], normal2: [0,1,0], layer: 3 },
+    ];
+
+    // Filtra edges: mostra solo quelli dove almeno una faccia adiacente è visibile
+    const isNormalVisible = (n: Vert) => {
+      const nv = new THREE.Vector3(n[0], n[1], n[2]);
+      return nv.dot(camDir) < 0.01;
+    };
+
+    // Genera SVG - disegna layer per layer: facce prima, poi edges dello stesso layer
+    // Così le facce esterne (layer 2) coprono gli edges interni (layer 0,1)
+    let svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">\n`;
+
+    for (let layer = 0; layer <= 3; layer++) {
+      // Facce di questo layer (già ordinate per depth dentro lo stesso layer)
+      const layerFaces = visible.filter(f => f.layer === layer);
+      for (const face of layerFaces) {
+        svg += `  <polygon points="${face.points}" fill="${face.color}" stroke="none"/>\n`;
+      }
+
+      // Edges di questo layer
+      for (const edge of allEdges) {
+        if (edge.layer !== layer) continue;
+        const vis1 = isNormalVisible(edge.normal1);
+        const vis2 = isNormalVisible(edge.normal2);
+        if (vis1 || vis2) {
+          const fromP = proj(edge.from).split(',');
+          const toP = proj(edge.to).split(',');
+          svg += `  <line x1="${fromP[0]}" y1="${fromP[1]}" x2="${toP[0]}" y2="${toP[1]}" stroke="${edgeColor}" stroke-width="${edgeWidth}" stroke-linecap="round"/>\n`;
+        }
+      }
+    }
+
+    svg += '</svg>';
+
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = `canva-${Date.now()}.svg`;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleClearScene = () => {
@@ -404,9 +680,9 @@ export function CanvaPage({ onBack }: CanvaPageProps) {
       {/* Canvas 3D */}
       <Canvas
         gl={{ preserveDrawingBuffer: true, antialias: true }}
-        style={{ background: '#767676' }}
+        style={{ background: '#252525' }}
       >
-        <Scene sceneRef={sceneRef} isAnimating={isAnimating} />
+        <Scene sceneRef={sceneRef} cameraRef={cameraRef} isAnimating={isAnimating} />
       </Canvas>
 
       {/* Bottoni a sinistra */}
@@ -466,6 +742,15 @@ export function CanvaPage({ onBack }: CanvaPageProps) {
         >
           <Download size={18} />
           Esporta PNG
+        </button>
+
+        {/* Bottone Esporta SVG */}
+        <button
+          onClick={handleExportSVG}
+          className="px-4 py-2 bg-orange-600 hover:bg-orange-500 rounded-lg text-white transition-all flex items-center gap-2"
+        >
+          <FileImage size={18} />
+          Esporta SVG
         </button>
 
         {/* Bottone Svuota Scena */}
