@@ -182,17 +182,20 @@ function WireframeIcosahedron({ isAnimating }: { isAnimating: boolean }) {
   );
 }
 
-// Cubo con cavità cubica aperta dall'alto
+// Struttura 3D: rettangolo con 3 triangoli rettangoli a dente di sega
 function HollowCube() {
   const meshGroup = useMemo(() => {
     const group = new THREE.Group();
 
-    const s = 1.0;    // metà lato esterno
-    const h = 0.65;   // metà lato cavità interna
-    const depth = 2.0; // altezza totale (= lato cubo)
+    const w = 1.0;     // metà larghezza (X)
+    const d = 0.7;     // metà profondità (Z)
+    const bot = -0.8;  // fondo
+    const mid = 0.25;  // cima base / base triangoli
+    const top = 0.8;   // cima triangoli
+    const tw = (2 * w) / 3; // larghezza ogni triangolo
 
     const material = new THREE.MeshPhysicalMaterial({
-      color: 0x888888,
+      color: 0xcc0000,
       metalness: 0.15,
       roughness: 0.35,
       clearcoat: 0.8,
@@ -200,38 +203,26 @@ function HollowCube() {
       envMapIntensity: 1.0,
     });
 
-    // Shape: quadrato esterno con buco quadrato interno
+    // Profilo: rettangolo base + 3 triangoli rettangoli a dente di sega
     const shape = new THREE.Shape();
-    shape.moveTo(-s, -s);
-    shape.lineTo(s, -s);
-    shape.lineTo(s, s);
-    shape.lineTo(-s, s);
+    shape.moveTo(-w, bot);
+    shape.lineTo(-w, top);            // parete sinistra fino in cima
+    shape.lineTo(-w + tw, mid);       // ipotenusa triangolo 1
+    shape.lineTo(-w + tw, top);       // verticale triangolo 2
+    shape.lineTo(-w + 2 * tw, mid);   // ipotenusa triangolo 2
+    shape.lineTo(-w + 2 * tw, top);   // verticale triangolo 3
+    shape.lineTo(w, mid);             // ipotenusa triangolo 3
+    shape.lineTo(w, bot);             // parete destra
     shape.closePath();
 
-    const holePath = new THREE.Path();
-    holePath.moveTo(-h, -h);
-    holePath.lineTo(h, -h);
-    holePath.lineTo(h, h);
-    holePath.lineTo(-h, h);
-    holePath.closePath();
-    shape.holes.push(holePath);
-
-    // Estrudi: crea pareti + bordo superiore (ring) + bordo inferiore (ring)
-    const wallsGeom = new THREE.ExtrudeGeometry(shape, {
-      depth: depth,
+    const geometry = new THREE.ExtrudeGeometry(shape, {
+      depth: d * 2,
       bevelEnabled: false,
     });
-    const walls = new THREE.Mesh(wallsGeom, material);
-    walls.rotation.x = -Math.PI / 2;
-    walls.position.y = -depth / 2;
-    group.add(walls);
 
-    // Fondo solido per chiudere la base
-    const bottomGeom = new THREE.PlaneGeometry(h * 2, h * 2);
-    const bottom = new THREE.Mesh(bottomGeom, material);
-    bottom.rotation.x = -Math.PI / 2;
-    bottom.position.y = -depth / 2;
-    group.add(bottom);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.z = -d;
+    group.add(mesh);
 
     return group;
   }, []);
@@ -244,7 +235,7 @@ function Scene({ sceneRef, cameraRef, isAnimating }: { sceneRef: React.MutableRe
   return (
     <>
       <SceneRef sceneRef={sceneRef} cameraRef={cameraRef} />
-      <PerspectiveCamera makeDefault position={[3, 3, 3]} fov={45} />
+      <PerspectiveCamera makeDefault position={[3, 4, 3]} fov={40} />
       <OrbitControls enablePan={true} enableZoom={true} target={[0, 0, 0]} />
       <ambientLight intensity={0.4} />
       <directionalLight position={[5, 5, 5]} intensity={1.2} />
@@ -472,64 +463,84 @@ export function CanvaPage({ onBack }: CanvaPageProps) {
       return;
     }
 
-    const camera = cameraRef.current;
     const size = 800;
     const half = size / 2;
 
-    // Dimensioni hollow cube
-    const s = 1.0;
-    const h = 0.65;
+    // Dimensioni struttura a dente di sega
+    const w = 1.0;     // metà larghezza (X)
+    const dd = 0.7;    // metà profondità (Z)
+    const bot = -0.8;  // fondo
+    const mid = 0.25;  // cima base
+    const top = 0.8;   // cima triangoli
+    const tw = (2 * w) / 3; // larghezza triangolo
 
-    type Vert = [number,number,number];
+    type Vert = [number, number, number];
     type Face = { verts: Vert[]; normal: Vert; layer: number };
 
-    // Layer: 0 = fondo cavità (più profondo), 1 = pareti interne, 2 = pareti esterne, 3 = ring superiore
+    // Vertici fronte (z = dd)
+    const A: Vert = [-w, bot, dd];           // bottom-left
+    const B: Vert = [-w, top, dd];           // top tri 1
+    const C: Vert = [-w + tw, mid, dd];      // valley 1-2
+    const D: Vert = [-w + tw, top, dd];      // top tri 2
+    const E: Vert = [-w + 2 * tw, mid, dd];  // valley 2-3
+    const F: Vert = [-w + 2 * tw, top, dd];  // top tri 3
+    const G: Vert = [w, mid, dd];            // right at mid
+    const H: Vert = [w, bot, dd];            // bottom-right
+
+    // Vertici retro (z = -dd)
+    const A2: Vert = [-w, bot, -dd];
+    const B2: Vert = [-w, top, -dd];
+    const C2: Vert = [-w + tw, mid, -dd];
+    const D2: Vert = [-w + tw, top, -dd];
+    const E2: Vert = [-w + 2 * tw, mid, -dd];
+    const F2: Vert = [-w + 2 * tw, top, -dd];
+    const G2: Vert = [w, mid, -dd];
+    const H2: Vert = [w, bot, -dd];
+
+    // Normale ipotenusa calcolata per pendenza (tw=0.667, h=0.55)
+    const hypN: Vert = [0.636, 0.771, 0];
+
+    // Layer: 1 = parete destra, 2 = faccia frontale, 3 = tetti ipotenusa
     const faces: Face[] = [
-      // Fondo cavità interna (layer 0)
-      { verts: [[-h,-s,-h],[h,-s,-h],[h,-s,h],[-h,-s,h]], normal: [0,1,0], layer: 0 },
-
-      // Pareti interne (layer 1)
-      { verts: [[h,-s,h],[-h,-s,h],[-h,s,h],[h,s,h]], normal: [0,0,-1], layer: 1 },
-      { verts: [[-h,-s,-h],[h,-s,-h],[h,s,-h],[-h,s,-h]], normal: [0,0,1], layer: 1 },
-      { verts: [[-h,-s,h],[-h,-s,-h],[-h,s,-h],[-h,s,h]], normal: [1,0,0], layer: 1 },
-      { verts: [[h,-s,-h],[h,-s,h],[h,s,h],[h,s,-h]], normal: [-1,0,0], layer: 1 },
-
-      // Pareti esterne (layer 2)
-      { verts: [[-s,-s,s],[s,-s,s],[s,s,s],[-s,s,s]], normal: [0,0,1], layer: 2 },
-      { verts: [[s,-s,-s],[-s,-s,-s],[-s,s,-s],[s,s,-s]], normal: [0,0,-1], layer: 2 },
-      { verts: [[-s,-s,-s],[-s,-s,s],[-s,s,s],[-s,s,-s]], normal: [-1,0,0], layer: 2 },
-      { verts: [[s,-s,s],[s,-s,-s],[s,s,-s],[s,s,s]], normal: [1,0,0], layer: 2 },
-
-      // Fondo esterno
-      { verts: [[-s,-s,s],[s,-s,s],[s,-s,-s],[-s,-s,-s]], normal: [0,-1,0], layer: 2 },
-
-      // Bordo superiore ring (layer 3 - sempre in cima)
-      { verts: [[-s,s,s],[s,s,s],[h,s,h],[-h,s,h]], normal: [0,1,0], layer: 3 },
-      { verts: [[s,s,-s],[-s,s,-s],[-h,s,-h],[h,s,-h]], normal: [0,1,0], layer: 3 },
-      { verts: [[-s,s,-s],[-s,s,s],[-h,s,h],[-h,s,-h]], normal: [0,1,0], layer: 3 },
-      { verts: [[s,s,s],[s,s,-s],[h,s,-h],[h,s,h]], normal: [0,1,0], layer: 3 },
+      // Faccia frontale (profilo a dente di sega)
+      { verts: [A, B, C, D, E, F, G, H], normal: [0, 0, 1], layer: 2 },
+      // Faccia retro
+      { verts: [H2, G2, F2, E2, D2, C2, B2, A2], normal: [0, 0, -1], layer: 0 },
+      // Fondo
+      { verts: [A, H, H2, A2], normal: [0, -1, 0], layer: 0 },
+      // Parete sinistra
+      { verts: [A2, B2, B, A], normal: [-1, 0, 0], layer: 0 },
+      // Parete destra (da bot a mid)
+      { verts: [H, G, G2, H2], normal: [1, 0, 0], layer: 1 },
+      // Gradino verticale 1→2
+      { verts: [C, D, D2, C2], normal: [-1, 0, 0], layer: 0 },
+      // Gradino verticale 2→3
+      { verts: [E, F, F2, E2], normal: [-1, 0, 0], layer: 0 },
+      // Tetto 1 (ipotenusa triangolo 1) - più lontano dalla camera
+      { verts: [B, B2, C2, C], normal: hypN, layer: 3 },
+      // Tetto 2 (ipotenusa triangolo 2) - medio
+      { verts: [D, D2, E2, E], normal: hypN, layer: 5 },
+      // Tetto 3 (ipotenusa triangolo 3) - più vicino alla camera
+      { verts: [F, F2, G2, G], normal: hypN, layer: 7 },
     ];
 
-    // Imposta aspect 1:1
-    camera.updateMatrixWorld();
-    let originalAspect: number | undefined;
-    if (camera instanceof THREE.PerspectiveCamera) {
-      originalAspect = camera.aspect;
-      camera.aspect = 1;
-      camera.updateProjectionMatrix();
-    }
+    // Camera ortografica isometrica
+    const frustumSize = 2.5;
+    const orthoCamera = new THREE.OrthographicCamera(
+      -frustumSize, frustumSize,
+      frustumSize, -frustumSize,
+      0.1, 100
+    );
+    orthoCamera.position.set(3, 4, 3);
+    orthoCamera.lookAt(0, 0, 0);
+    orthoCamera.updateMatrixWorld();
 
     const vpMatrix = new THREE.Matrix4().multiplyMatrices(
-      camera.projectionMatrix, camera.matrixWorldInverse
+      orthoCamera.projectionMatrix, orthoCamera.matrixWorldInverse
     );
 
-    if (camera instanceof THREE.PerspectiveCamera && originalAspect !== undefined) {
-      camera.aspect = originalAspect;
-      camera.updateProjectionMatrix();
-    }
-
     const camDir = new THREE.Vector3();
-    camera.getWorldDirection(camDir);
+    orthoCamera.getWorldDirection(camDir);
     const lightDir = new THREE.Vector3(5, 5, 5).normalize();
 
     const project = (v: Vert) => {
@@ -537,13 +548,12 @@ export function CanvaPage({ onBack }: CanvaPageProps) {
       return { x: (p.x * half) + half, y: (-p.y * half) + half, z: p.z };
     };
 
-    // Proietta un singolo punto (per edges)
     const proj = (v: Vert) => {
       const p = project(v);
       return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
     };
 
-    // Processa facce visibili ordinate per layer
+    // Filtra facce visibili e calcola colori
     const visible: { points: string; layer: number; depth: number; color: string }[] = [];
 
     for (const face of faces) {
@@ -553,88 +563,82 @@ export function CanvaPage({ onBack }: CanvaPageProps) {
       const projected = face.verts.map(project);
       const depth = projected.reduce((sum, p) => sum + p.z, 0) / projected.length;
 
-      // Illuminazione con più contrasto per layer interni
       const lightDot = Math.max(0, n.dot(lightDir));
-      const ambient = face.layer <= 1 ? 0.2 : 0.35; // cavità più scura
-      const baseGray = face.layer === 0 ? 100 : 136; // fondo cavità ancora più scuro
+      const ambient = 0.35;
       const intensity = ambient + (1 - ambient) * lightDot;
-      const colorVal = Math.min(255, Math.round(baseGray * intensity));
-      const hex = colorVal.toString(16).padStart(2, '0');
-      const color = `#${hex}${hex}${hex}`;
+      // Base rosso
+      const baseR = 210;
+      const baseG = 25;
+      const baseB = 25;
+      const r = Math.min(255, Math.round(baseR * intensity));
+      const g = Math.min(255, Math.round(baseG * intensity));
+      const b = Math.min(255, Math.round(baseB * intensity));
+      const color = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 
       const points = projected.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
       visible.push({ points, layer: face.layer, depth, color });
     }
 
-    // Ordina: prima per layer (basso=dietro), poi per depth dentro lo stesso layer
+    // Silhouette scura: contorno completo dell'edificio come sfondo.
+    // I gap tra i tetti rivelano questo sfondo scuro = effetto gradini verticali.
+    const silVerts = [A, B, B2, C2, D2, E2, F2, G2, H2, H];
+    const silProj = silVerts.map(project);
+    const silPoints = silProj.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    visible.push({ points: silPoints, layer: 0, depth: 0, color: '#3a0808' });
+
     visible.sort((a, b) => {
       if (a.layer !== b.layer) return a.layer - b.layer;
       return b.depth - a.depth;
     });
 
-    // Edges con layer assignment per disegnare interleaved con le facce
-    const edgeColor = '#555555';
+    // Edges
+    const edgeColor = '#4d0808';
     const edgeWidth = 2;
 
-    // Vertici chiave
-    const OTF: Vert = [-s,s,s], OTR: Vert = [s,s,s], OTB: Vert = [s,s,-s], OTL: Vert = [-s,s,-s];
-    const OBF: Vert = [-s,-s,s], OBR: Vert = [s,-s,s], OBB: Vert = [s,-s,-s], OBL: Vert = [-s,-s,-s];
-    const ITF: Vert = [-h,s,h], ITR: Vert = [h,s,h], ITB: Vert = [h,s,-h], ITL: Vert = [-h,s,-h];
-    const IBF: Vert = [-h,-s,h], IBR: Vert = [h,-s,h], IBB: Vert = [h,-s,-h], IBL: Vert = [-h,-s,-h];
-
-    // Edges con layer: stessa layering delle facce
-    // layer 0 = fondo cavità, 1 = pareti interne, 2 = pareti esterne, 3 = ring superiore
     const allEdges: { from: Vert; to: Vert; normal1: Vert; normal2: Vert; layer: number }[] = [
-      // Spigoli fondo cavità (layer 0)
-      { from: IBF, to: IBR, normal1: [0,0,-1], normal2: [0,1,0], layer: 0 },
-      { from: IBR, to: IBB, normal1: [-1,0,0], normal2: [0,1,0], layer: 0 },
-      { from: IBB, to: IBL, normal1: [0,0,1], normal2: [0,1,0], layer: 0 },
-      { from: IBL, to: IBF, normal1: [1,0,0], normal2: [0,1,0], layer: 0 },
-      // Spigoli verticali interni (layer 1)
-      { from: ITF, to: IBF, normal1: [0,0,-1], normal2: [1,0,0], layer: 1 },
-      { from: ITR, to: IBR, normal1: [0,0,-1], normal2: [-1,0,0], layer: 1 },
-      { from: ITB, to: IBB, normal1: [0,0,1], normal2: [-1,0,0], layer: 1 },
-      { from: ITL, to: IBL, normal1: [0,0,1], normal2: [1,0,0], layer: 1 },
-      // Spigoli verticali esterni (layer 2)
-      { from: OTF, to: OBF, normal1: [0,0,1], normal2: [-1,0,0], layer: 2 },
-      { from: OTR, to: OBR, normal1: [0,0,1], normal2: [1,0,0], layer: 2 },
-      { from: OTB, to: OBB, normal1: [0,0,-1], normal2: [1,0,0], layer: 2 },
-      { from: OTL, to: OBL, normal1: [0,0,-1], normal2: [-1,0,0], layer: 2 },
-      // Spigoli inferiori esterni (layer 2)
-      { from: OBF, to: OBR, normal1: [0,0,1], normal2: [0,-1,0], layer: 2 },
-      { from: OBR, to: OBB, normal1: [1,0,0], normal2: [0,-1,0], layer: 2 },
-      { from: OBB, to: OBL, normal1: [0,0,-1], normal2: [0,-1,0], layer: 2 },
-      { from: OBL, to: OBF, normal1: [-1,0,0], normal2: [0,-1,0], layer: 2 },
-      // Spigoli superiori esterni (layer 3)
-      { from: OTF, to: OTR, normal1: [0,0,1], normal2: [0,1,0], layer: 3 },
-      { from: OTR, to: OTB, normal1: [1,0,0], normal2: [0,1,0], layer: 3 },
-      { from: OTB, to: OTL, normal1: [0,0,-1], normal2: [0,1,0], layer: 3 },
-      { from: OTL, to: OTF, normal1: [-1,0,0], normal2: [0,1,0], layer: 3 },
-      // Spigoli superiori buco interno (layer 3)
-      { from: ITF, to: ITR, normal1: [0,0,-1], normal2: [0,1,0], layer: 3 },
-      { from: ITR, to: ITB, normal1: [-1,0,0], normal2: [0,1,0], layer: 3 },
-      { from: ITB, to: ITL, normal1: [0,0,1], normal2: [0,1,0], layer: 3 },
-      { from: ITL, to: ITF, normal1: [1,0,0], normal2: [0,1,0], layer: 3 },
+      // Parete destra (layer 1)
+      { from: H, to: H2, normal1: [1, 0, 0], normal2: [0, -1, 0], layer: 1 },
+      { from: G2, to: H2, normal1: [0, 0, -1], normal2: [1, 0, 0], layer: 1 },
+      // Tetto 1 (layer 3)
+      { from: B, to: B2, normal1: [-1, 0, 0], normal2: hypN, layer: 3 },
+      { from: B2, to: C2, normal1: [0, 0, -1], normal2: hypN, layer: 3 },
+      // Tetto 2 (layer 5)
+      { from: D2, to: E2, normal1: [0, 0, -1], normal2: hypN, layer: 5 },
+      // Gradino 1→2 (tra tetto 1 e tetto 2 - tetto 2 copre le parti nascoste)
+      { from: C, to: C2, normal1: hypN, normal2: [-1, 0, 0], layer: 4 },
+      { from: D, to: D2, normal1: [-1, 0, 0], normal2: hypN, layer: 5 },
+      { from: C2, to: D2, normal1: [0, 0, -1], normal2: hypN, layer: 4 },
+      // Tetto 3 (layer 7)
+      { from: G, to: G2, normal1: [1, 0, 0], normal2: hypN, layer: 7 },
+      { from: F2, to: G2, normal1: [0, 0, -1], normal2: hypN, layer: 7 },
+      // Gradino 2→3 (tra tetto 2 e tetto 3 - tetto 3 copre le parti nascoste)
+      { from: E, to: E2, normal1: hypN, normal2: [-1, 0, 0], layer: 6 },
+      { from: F, to: F2, normal1: [-1, 0, 0], normal2: hypN, layer: 7 },
+      { from: E2, to: F2, normal1: [0, 0, -1], normal2: hypN, layer: 6 },
+      // Profilo fronte - ultimo layer (z=0.7, sempre in primo piano)
+      { from: A, to: B, normal1: [0, 0, 1], normal2: [-1, 0, 0], layer: 9 },
+      { from: B, to: C, normal1: [0, 0, 1], normal2: hypN, layer: 9 },
+      { from: C, to: D, normal1: [0, 0, 1], normal2: [-1, 0, 0], layer: 9 },
+      { from: D, to: E, normal1: [0, 0, 1], normal2: hypN, layer: 9 },
+      { from: E, to: F, normal1: [0, 0, 1], normal2: [-1, 0, 0], layer: 9 },
+      { from: F, to: G, normal1: [0, 0, 1], normal2: hypN, layer: 9 },
+      { from: G, to: H, normal1: [0, 0, 1], normal2: [1, 0, 0], layer: 9 },
+      { from: A, to: H, normal1: [0, 0, 1], normal2: [0, -1, 0], layer: 9 },
     ];
 
-    // Filtra edges: mostra solo quelli dove almeno una faccia adiacente è visibile
     const isNormalVisible = (n: Vert) => {
       const nv = new THREE.Vector3(n[0], n[1], n[2]);
       return nv.dot(camDir) < 0.01;
     };
 
-    // Genera SVG - disegna layer per layer: facce prima, poi edges dello stesso layer
-    // Così le facce esterne (layer 2) coprono gli edges interni (layer 0,1)
+    // Genera SVG layer per layer
     let svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">\n`;
-
-    for (let layer = 0; layer <= 3; layer++) {
-      // Facce di questo layer (già ordinate per depth dentro lo stesso layer)
+    for (let layer = 0; layer <= 9; layer++) {
       const layerFaces = visible.filter(f => f.layer === layer);
       for (const face of layerFaces) {
         svg += `  <polygon points="${face.points}" fill="${face.color}" stroke="none"/>\n`;
       }
 
-      // Edges di questo layer
       for (const edge of allEdges) {
         if (edge.layer !== layer) continue;
         const vis1 = isNormalVisible(edge.normal1);
